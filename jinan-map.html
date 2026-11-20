@@ -293,7 +293,7 @@
           const pois = communityData.pois || [];
           // Prefer exact and partial name matches; don't silently pick a random
           // residential complex when the user searches a different POI.
-          const normalized = (value) => String(value || "").replace(/[\\s·•.()（）]/g, "").toLowerCase();
+          const normalized = (value) => String(value || "").replace(/[\s·•.()（）]/g, "").toLowerCase();
           const desired = normalized(community.keyword);
           const candidates = pois.filter((poi) => poi.location && poi.name);
           const parent = candidates.find((poi) => normalized(poi.name) === desired)
