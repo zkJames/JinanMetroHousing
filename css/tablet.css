@@ -98,3 +98,13 @@ body { background:#e9f2f3; }
 /* Standalone map does not show the host's navigation. */
 .seasons-back { display:none; text-decoration:none; align-items:center; }
 .seasons-hosted .seasons-back { display:inline-flex; }
+
+/* More useful scrollable housing list on Huawei MatePad 12.2. */
+.comparison-list { max-height:min(37dvh,310px); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.featured-item { display:flow-root; min-height:59px; padding:9px 10px; }
+.featured-item strong { font-size:13px; margin-bottom:4px; line-height:1.4; }
+.featured-description { display:block; color:#718f99; font-size:11px; line-height:1.45; }
+.featured-label { max-width:150px; font-size:12px; }
+.sales-label { color:#9b5c18; }
+.sales-label::before { content:'售'; background:#aa7934; }
+@media (orientation:portrait) { .comparison-list { max-height:17dvh; } }
