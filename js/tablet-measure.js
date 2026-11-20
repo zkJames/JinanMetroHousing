@@ -114,9 +114,15 @@
     }
     Object.keys(buttons).forEach(function (key) {
       buttons[key].addEventListener('click', function () {
-        if (key === 'walk') { resetWalk(); savedMeters = null; }
+        if (mode === key) { setMode('pan'); return; }
+        // Measurement modes are mutually exclusive. Switching modes starts a fresh
+        // measurement so an old walking result cannot override a new finger trail.
+        resetWalk();
+        segments = []; undone = []; tapPoints = []; tapUndone = [];
+        savedMeters = null;
+        render();
         lastType = key;
-        setMode(mode === key ? 'pan' : key);
+        setMode(key);
       });
     });
     map.on('click', function (event) {
@@ -204,6 +210,11 @@
     });
     finish.addEventListener('click', function () { setMode('pan'); report('测距已完成'); });
     undo.addEventListener('click', function () {
+      if (mode === 'walk' || (walkingMeters !== null && !segments.length)) {
+        resetWalk();
+        report('已撤销步行测距');
+        return;
+      }
       if (mode === 'tap' && tapPoints.length) {
         tapUndone.push(tapPoints.pop());
       } else if (segments.length) {
