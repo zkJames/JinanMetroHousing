@@ -5,7 +5,7 @@
   function defaults() {
     return {
       version: 1, favorites: [], recent: [], measurements: [],
-      layers: { lines: true, stations: true, exits: true, communityExits: true },
+      layers: { lines: true, stations: true, exits: true, communityExits: true, communities: true },
       viewport: null
     };
   }
