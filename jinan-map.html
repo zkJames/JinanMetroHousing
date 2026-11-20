@@ -142,10 +142,10 @@
     <div class="eyebrow">SPRING CITY · JINAN</div>
     <h1>济南市地图</h1>
     <p>一城山色半城湖，探索泉城的城市坐标</p>
-    <div class="search-row"><input id="keyword" placeholder="输入小区 / 楼盘名称" enterkeyhint="search" /><button id="search">搜索</button></div>
+    <div class="search-row"><input id="keyword" placeholder="搜索楼盘 / 地铁站 / 地点" enterkeyhint="search" /><button id="search">搜索</button></div>
     <div id="searchStatus" class="poi-status" role="status" aria-live="polite"></div>
-    <div class="section-title">小区对比列表</div>
-    <div id="communityList" class="comparison-list"><div class="comparison-item">输入小区名称后，将展示小区位置与高德记录的出入口数量。</div></div>
+    <div class="section-title">已标注楼盘（<span id="featuredCount">13</span>） · 点击定位</div>
+    <div id="communityList" class="comparison-list"><div class="comparison-item">正在加载已标注楼盘…</div></div>
     <div class="section-title">高德地铁线路</div>
     <div class="line-legend">
       <div class="line-item"><i class="line-dot" style="background:#B3499B"></i>1号线 · 已开通</div>
@@ -181,6 +181,9 @@
   <script src="./amap-metro-poi-data.js"></script>
   <script src="./metro-line7-data.js"></script>
   <script src="./metro-lines-data.js"></script>
+  <script src="./js/featured-communities.js"></script>
+  <script src="./js/featured-communities-ui.js"></script>
+  <script src="./js/metro-viewport.js"></script>
   <script src="./js/storage.js"></script>
   <script src="./js/tablet-ui.js"></script>
   <script src="./js/tablet-measure.js"></script>
@@ -189,7 +192,7 @@
     const AMAP_JSAPI_KEY = window.JINAN_MAP_CONFIG?.jsApiKey || "";
     const AMAP_WEBSERVICE_KEY = window.JINAN_MAP_CONFIG?.webServiceKey || "";
     const communities = [];
-    const layerGroups = { lines: [], stations: [], exits: [], communityExits: [] };
+    const layerGroups = { lines: [], stations: [], exits: [], communityExits: [], communities: [] };
     const metroLines = [
       { no: "1", color: "#B3499B" }, { no: "2", color: "#E7A928" },
       { no: "3", color: "#164D9C" }, { no: "4", color: "#2F9248" },
@@ -200,13 +203,13 @@
     AMapLoader.load({
       key: AMAP_JSAPI_KEY,
       version: "2.0",
-      plugins: ["AMap.PlaceSearch", "AMap.Scale", "AMap.ToolBar", "AMap.MouseTool", "AMap.Walking"]
+      plugins: ["AMap.Scale", "AMap.ToolBar", "AMap.Walking"]
     })
       .then((AMap) => {
         const map = new AMap.Map("container", {
-          zoom: 12,
-          center: [117.12, 36.65],
-          viewMode: "3D",
+          zoom: 13,
+          center: [117.115, 36.689],
+          viewMode: "2D",
           mapStyle: "amap://styles/normal"
         });
         map.addControl(new AMap.Scale());
@@ -238,15 +241,25 @@
         const toLngLat = (location) => String(location).split(",").map(Number);
         const fetchPoi = async (keyword, children = "0") => {
           if (!window.JINAN_MAP_CONFIG?.proxyPoi && !AMAP_WEBSERVICE_KEY) throw new Error("请先配置高德 Web 服务 Key");
+          const proxy = !!window.JINAN_MAP_CONFIG?.proxyPoi;
           const query = new URLSearchParams({
-            ...(window.JINAN_MAP_CONFIG?.proxyPoi ? {} : { key: AMAP_WEBSERVICE_KEY }),
-            keywords: keyword, city: "370100", citylimit: "true",
+            ...(proxy ? { keyword } : { key: AMAP_WEBSERVICE_KEY, keywords: keyword }),
+            city: "370100", citylimit: "true",
             children, offset: "50", page: "1", extensions: "all"
           });
-          const endpoint = window.JINAN_MAP_CONFIG?.proxyPoi ? new URL("./api/poi", location.href).pathname : "https://restapi.amap.com/v3/place/text";
-          const response = await fetch(endpoint + "?" + query, { signal: AbortSignal.timeout(9000) });
-          if (!response.ok) throw new Error("高德 POI 请求失败");
-          return response.json();
+          const endpoint = proxy ? new URL("./api/poi", location.href).pathname : "https://restapi.amap.com/v3/place/text";
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 12000);
+          try {
+            const response = await fetch(endpoint + "?" + query, { signal: controller.signal });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.message || `POI 服务不可用（HTTP ${response.status}）`);
+            if (data.status !== "1") throw new Error(data.info || data.message || "高德 POI 查询失败");
+            return data;
+          } catch (error) {
+            if (error.name === "AbortError") throw new Error("POI 搜索超时，请检查网络");
+            throw error;
+          } finally { clearTimeout(timer); }
         };
         const communityIds = new Set();
         const communityExitIds = new Set();
@@ -257,6 +270,8 @@
         const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
           "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
         })[c]);
+        // Built-in landmarks are displayed immediately, even if live POI services fail.
+        const featured = window.JinanFeaturedInit({ map, AMap, layers: layerGroups });
         const addPendingCommunityItem = (community) => {
           if (pendingCommunityItems.has(community.keyword)) return;
           const item = document.createElement("div");
@@ -270,14 +285,21 @@
         };
         const loadCommunity = async (community, focus = false) => {
           addPendingCommunityItem(community);
-          const communityData = await fetchPoi(community.keyword, "1");
-          let exitData = { pois: [] };
-          try { exitData = await fetchPoi(community.exitKeyword); } catch { /* 小区位置仍可正常显示 */ }
+          const communityRequest = fetchPoi(community.keyword, "1");
+          const exitRequest = community.exitKeyword
+            ? fetchPoi(community.exitKeyword).catch(() => ({ pois: [] }))
+            : Promise.resolve({ pois: [] });
+          const [communityData, exitData] = await Promise.all([communityRequest, exitRequest]);
           const pois = communityData.pois || [];
-          const parent = pois.find((poi) => /住宅小区/.test(poi.type || ""))
-            || pois.find((poi) => poi.location && new RegExp(community.keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(poi.name || ""))
-            || pois.find((poi) => poi.location);
-          if (!parent?.location) throw new Error("未找到小区 POI");
+          // Prefer exact and partial name matches; don't silently pick a random
+          // residential complex when the user searches a different POI.
+          const normalized = (value) => String(value || "").replace(/[\\s·•.()（）]/g, "").toLowerCase();
+          const desired = normalized(community.keyword);
+          const candidates = pois.filter((poi) => poi.location && poi.name);
+          const parent = candidates.find((poi) => normalized(poi.name) === desired)
+            || candidates.find((poi) => normalized(poi.name).includes(desired))
+            || candidates[0];
+          if (!parent?.location) throw new Error("没有找到匹配的地点 POI，请调整关键词");
           const position = toLngLat(parent.location);
           let communityMarker = communityRecords.get(parent.id)?.marker;
           if (!communityIds.has(parent.id)) {
@@ -375,48 +397,12 @@
           item.classList.remove("expanded");
           item.setAttribute("aria-expanded", "false");
         }));
-        const addStationAndExits = (poi) => {
-          if (!poi.location) return;
-          const lineNos = [...new Set((String(poi.address || "").match(/\d+(?=号线)/g) || []))];
-          const stationKey = `${poi.name}-${poi.location}`;
-          if (!stationIds.has(stationKey)) {
-            stationIds.add(stationKey);
-            const stationName = (poi.name || "").replace(/\(地铁站\)|（地铁站）/g, "");
-            const lineText = lineNos.length ? lineNos.join("/") : "M";
-            const colors = lineNos.map((no) => lineColors[no] || "#667085");
-            const background = colors.length > 1 ? `linear-gradient(135deg,${colors.join(",")})` : colors[0] || "#667085";
-            const content = metroPoint(`${lineText} ${stationName}`, background);
-            registerOverlay("stations", new AMap.Marker({ position: toLngLat(poi.location), content, offset: new AMap.Pixel(-5, -5), zIndex: 20 }));
-          }
-          (poi.children || []).forEach((exit) => {
-            if (!exit.location || exitIds.has(exit.id)) return;
-            exitIds.add(exit.id);
-            const shortName = (exit.sname || exit.name || "出口").trim();
-            const color = lineColors[lineNos[0]] || "#3949ab";
-            const content = metroPoint(shortName, color);
-            registerOverlay("exits", new AMap.Marker({ position: toLngLat(exit.location), content, offset: new AMap.Pixel(-5, -5), zIndex: 10 }));
-          });
-        };
-        const addStandaloneExit = (exit) => {
-          if (!exit.location || exitIds.has(exit.id)) return;
-          exitIds.add(exit.id);
-          const lineNo = (String(exit.address || "").match(/\d+(?=号线)/) || [])[0];
-          const color = lineColors[lineNo] || "#3949ab";
-          const shortName = (exit.sname || exit.name || "出口").trim();
-          const content = metroPoint(shortName, color);
-          registerOverlay("exits", new AMap.Marker({ position: toLngLat(exit.location), content, offset: new AMap.Pixel(-5, -5), zIndex: 10 }));
-        };
-        const loadAllMetroStations = () => {
-          const data = window.AMAP_OFFLINE_METRO_DATA || { stations: [], exits: [] };
-          (data.stations || []).forEach(addStationAndExits);
-          (data.exits || []).forEach(addStandaloneExit);
-        };
-        try {
-          loadAllMetroStations();
-          poiStatus.textContent = `本地高德 POI 快照：${stationIds.size} 个地铁站、${exitIds.size} 个出入口`;
-        } catch {
-          poiStatus.textContent = "本地地铁 POI 数据加载失败，请刷新重试";
-        }
+        const metroViewport = window.JinanMetroViewportInit({
+          map, AMap, groups: layerGroups, data: window.AMAP_OFFLINE_METRO_DATA,
+          lineColors, metroPoint
+        });
+        window.JinanMetroViewport = metroViewport;
+        poiStatus.textContent = `本地地铁 POI：${metroViewport.counts.stations} 个车站、${metroViewport.counts.exits} 个出入口 · 放大到15级显示出入口`;
 
         window.JinanTabletUIInit({ map, layers: layerGroups });
         window.JinanMeasureInit({ map, AMap });
@@ -428,11 +414,26 @@
           button.disabled = true;
           button.textContent = "搜索中";
           const searchStatus = document.getElementById("searchStatus");
-          searchStatus.textContent = "正在搜索小区位置…";
+          searchStatus.textContent = "正在查询地点…";
           try {
-            await loadCommunity({ name: keyword, keyword, exitKeyword: `${keyword} 出入口` }, true);
+            const known = featured.find(keyword);
+            if (known) {
+              featured.focus(known);
+              searchStatus.textContent = "已定位已标注楼盘：" + known.name;
+            } else {
+              // Local station data also works when the web POI API is down.
+              const station = (window.AMAP_OFFLINE_METRO_DATA?.stations || [])
+                .find((item) => String(item.id).startsWith("BV") &&
+                  String(item.name).replace(/[（(]地铁站[）)]/g, "").includes(keyword));
+              if (station) {
+                map.setZoomAndCenter(16, toLngLat(station.location), false, 320);
+                searchStatus.textContent = "已定位地铁站：" + station.name;
+              } else {
+                await loadCommunity({ name: keyword, keyword, exitKeyword: `${keyword} 出入口` }, true);
+                searchStatus.textContent = "已定位高德 POI：" + keyword;
+              }
+            }
             window.JinanTabletUI.recordSearch(keyword);
-            searchStatus.textContent = "已定位：" + keyword;
           } catch (error) {
             searchStatus.textContent = "搜索失败：" + (error.message || "未找到该小区，请检查网络或关键词");
           } finally {
