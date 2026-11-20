@@ -1,5 +1,5 @@
 /* Lightweight app-shell caching. Do not cache AMap tiles, geocoding, personal API data or secrets. */
-const CACHE = 'jinan-metro-pwa-v1';
+const CACHE = 'jinan-metro-pwa-v2';
 const ASSETS = [
   '/', '/index.html', '/jinan-map.html',
   '/css/tablet.css', '/js/storage.js', '/js/tablet-ui.js', '/js/tablet-measure.js',
@@ -29,10 +29,26 @@ self.addEventListener('fetch', event => {
   const url = new URL(req.url);
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_AMapService/') || url.pathname === '/config.local.js') return;
   if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).then(response => response.ok ? response : Promise.reject(new Error('Network')))
-      .catch(() => caches.match('/index.html')));
+    event.respondWith(fetch(req).then(async response => {
+      if (!response.ok) throw new Error('Network');
+      if (ASSETS.includes(url.pathname)) {
+        const cache = await caches.open(CACHE);
+        await cache.put(req, response.clone());
+      }
+      return response;
+    }).catch(async () => (await caches.match(req)) || (await caches.match('/jinan-map.html'))));
     return;
   }
   if (!ASSETS.includes(url.pathname)) return;
-  event.respondWith(caches.match(req).then(cached => cached || fetch(req)));
+  // Network first ensures updated scripts arrive without asking tablet users to
+  // manually clear the site's storage. Cached copies are only a fallback.
+  event.respondWith(caches.open(CACHE).then(async cache => {
+    try {
+      const response = await fetch(req);
+      if (response.ok) await cache.put(req, response.clone());
+      return response;
+    } catch (_) {
+      return (await cache.match(req)) || Response.error();
+    }
+  }));
 });
