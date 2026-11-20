@@ -1,0 +1,20 @@
+{
+  "name": "济南地铁房地图",
+  "short_name": "济南地铁房",
+  "description": "Our Seasons · 济南地铁房地图，华为平板画线测距和楼盘收藏",
+  "start_url": "/metro/",
+  "scope": "/metro/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eef5f7",
+  "theme_color": "#0f4d66",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/metro/icons/metro.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
