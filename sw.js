@@ -1,9 +1,10 @@
 /* Lightweight app-shell caching. Do not cache AMap tiles, geocoding, personal API data or secrets. */
-const CACHE = 'jinan-metro-pwa-v3';
+const CACHE = 'jinan-metro-pwa-v4';
 const PREFIX = new URL(self.registration.scope).pathname.replace(/\/$/, '');
 const ASSETS = [
   '/', '/index.html', '/jinan-map.html',
-  '/css/tablet.css', '/js/storage.js', '/js/tablet-ui.js', '/js/tablet-measure.js',
+  '/css/tablet.css', '/js/featured-communities.js', '/js/featured-communities-ui.js',
+  '/js/metro-viewport.js', '/js/storage.js', '/js/tablet-ui.js', '/js/tablet-measure.js',
   '/amap-metro-poi-data.js', '/metro-lines-data.js', '/metro-line7-data.js',
   '/manifest.webmanifest', '/manifest-metro.webmanifest', '/icons/metro.svg'
 ].map(path => PREFIX + path);
