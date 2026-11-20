@@ -12,7 +12,7 @@ const read = p => readFileSync(resolve(root,p),'utf8');
 test('all frontend scripts and Vercel handlers parse', () => {
   const scripts = [
     'js/storage.js', 'js/tablet-ui.js', 'js/tablet-measure.js',
-    'sw.js', 'api/config.mjs', 'api/poi.mjs', 'api/amap-proxy.mjs'
+    'sw.js', 'js/featured-communities.js', 'js/featured-communities-ui.js', 'js/metro-viewport.js', 'api/config.mjs', 'api/poi.mjs', 'api/amap-proxy.mjs'
   ];
   scripts.forEach(file => {
     execFileSync(process.execPath, ['--check', resolve(root, file)]);
@@ -52,6 +52,30 @@ test('PWA caches only the shell, not remote or private API responses', () => {
   assert.match(sw, /url\.pathname\.startsWith\(PREFIX \+ '\/api\/'\)/);
   assert.match(sw, /\/_AMapService\//);
   assert.doesNotMatch(sw, /restapi\.amap\.com/);
+});
+
+test('curated residential POIs and tablet viewport remain lightweight', () => {
+  const vm = { window: {} };
+  runInNewContext(read('js/featured-communities.js'), vm);
+  const places = vm.window.JINAN_FEATURED_COMMUNITIES;
+  assert.equal(places.length, 13);
+  assert.equal(new Set(places.map(p => p.id)).size, places.length);
+  assert.ok(places.some(p => p.aliases.includes('鲁投一号院')));
+  assert.ok(places.some(p => p.aliases.includes('中海时光之镜')));
+  assert.ok(places.some(p => p.type === 'sales'));
+  assert.ok(places.every(p => p.location.every(Number.isFinite)));
+  const page = read('jinan-map.html');
+  assert.match(page, /JinanFeaturedInit/);
+  assert.match(page, /JinanMetroViewportInit/);
+  assert.match(page, /viewMode: "2D"/);
+  assert.match(page, /\{ keyword \}/);
+  const viewport = read('js/metro-viewport.js');
+  assert.match(viewport, /map\.on\('moveend', schedule\)/);
+  assert.match(viewport, /zoom >= 15/);
+  assert.doesNotMatch(page, /addStationAndExits/);
+  const sw = read('sw.js');
+  assert.match(sw, /featured-communities-ui\.js/);
+  assert.match(sw, /metro-viewport\.js/);
 });
 
 test('Our Seasons module works under /metro/ without touching root paths', () => {
