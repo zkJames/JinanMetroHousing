@@ -54,3 +54,20 @@
 手绘得到的是**沿手指轨迹的几何距离**，并非真实道路步行距离；请使用「两点步行」计算路线距离。绘制时会锁住地图拖动以避免误触，返回浏览模式后恢复拖动/缩放。
 
 完成后需要在真实 MatePad 12.2 上测试横屏、竖屏、触摸绘制、多点折线、点击地铁站、楼盘搜索、步行规划、收藏恢复、断网提示和桌面快捷启动。尤其要确认高德 Key 权限和 Vercel 默认域名在所在网络可用。 
+
+
+## Our Seasons 同域名子模块
+
+项目也可通过现有 Our Seasons Vercel 项目的**项目级路由**挂载，不复制主站构建文件、不触碰原网站首页：
+
+- 页面入口：\`https://merrychristmasmengmeng.xyz/metro/\`
+- 部署源：独立 \`JinanMetroHousing\` Vercel 项目的开发分支预览别名（两套代码互相独立）。
+- Our Seasons 路由一：\`^/metro$\` 308 跳转到 \`/metro/\`。
+- Our Seasons 路由二：\`^/metro/(.*)$\` 反向代理到地图部署的 \`/$1\`。
+- JSAPI 配置、POI 和 \`_AMapService\` 均使用相对 \`/metro/\` 路径；Service Worker 只管理 \`/metro/\`，不接管 Our Seasons 根路径。
+- 安装到华为平板时使用 \`manifest-metro.webmanifest\`；独立项目仍可使用 \`manifest.webmanifest\`。
+- 顶部「← Our Seasons」返回主站首页，仅在 \`/metro/\` 路径显示。
+
+**后续正式发布的维护注意：** 当前代理依赖地图项目开发分支的稳定预览别名。通过实机验收并合并地图 PR 后，应将代理改为地图项目稳定的生产域名，避免开发分支删除后入口失效。Our Seasons 首页如果需要新增可点击的“济南地铁房”卡片，还需编辑 **Our Seasons 自身**的 React 模块注册与导航代码；仅靠 Vercel 路由不会自动出现首页卡片。目前 Vercel 部署曾引用的 \`zkJames/ChristmasTreeZK\` 仓库未被当前 GitHub 连接授权或已不可访问，不应盲目替换旧站生产构建。
+
+> 高德 JS API 的安全设置需要确认已允许 \`merrychristmasmengmeng.xyz\` 作为访问来源；若浏览器报错，先检查该域名的来源/权限设置。密钥继续保存在独立地图项目的 Vercel 环境变量中，切勿迁入 Our Seasons 的前端源码。
