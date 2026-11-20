@@ -103,6 +103,104 @@ test('Vercel maps the official AMap serviceHost prefix to server code', () => {
   assert.doesNotMatch(read('api/config.mjs'), /securityJsCode:/);
 });
 
+test('POI API accepts both keyword forms without exposing the Web Service key', async () => {
+  const { default: handler } = await import('../api/poi.mjs');
+  const previous = process.env.AMAP_WEB_SERVICE_KEY;
+  const originalFetch = globalThis.fetch;
+  process.env.AMAP_WEB_SERVICE_KEY = 'unit-test-secret-not-real';
+  const queries = [];
+  globalThis.fetch = async (url) => {
+    const request = new URL(String(url));
+    queries.push(request);
+    return {
+      ok: true, status: 200,
+      async json() { return { status: '1', pois: [{id:'test-id',name:'地点',location:'117.1,36.6'}], count: '1' }; }
+    };
+  };
+  function mockResponse() {
+    const result = { code: 0, body: null };
+    return {
+      result,
+      setHeader() { return this; },
+      status(code) { result.code = code; return this; },
+      json(body) { result.body = body; return this; }
+    };
+  }
+  try {
+    const byKeyword = mockResponse();
+    await handler({ method:'GET', query:{keyword:'鲁投壹号院',children:'1'} }, byKeyword);
+    assert.equal(byKeyword.result.code,200);
+    assert.equal(byKeyword.result.body.pois.length,1);
+    assert.equal(queries[0].searchParams.get('keywords'),'鲁投壹号院');
+    const byKeywords = mockResponse();
+    await handler({ method:'GET', query:{keywords:'趵突泉',children:'0'} }, byKeywords);
+    assert.equal(byKeywords.result.code,200);
+    assert.equal(queries[1].searchParams.get('keywords'),'趵突泉');
+    const invalid = mockResponse();
+    await handler({ method:'GET', query:{children:'1'} }, invalid);
+    assert.equal(invalid.result.code,400);
+    assert.equal(queries.length,2);
+    assert.ok(!JSON.stringify(byKeyword.result.body).includes('unit-test-secret-not-real'));
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previous === undefined) delete process.env.AMAP_WEB_SERVICE_KEY;
+    else process.env.AMAP_WEB_SERVICE_KEY = previous;
+  }
+});
+
+test('viewport marker manager deduplicates exits and skips them until zoom 15', () => {
+  let zoom = 12;
+  let center = [117.1,36.7];
+  let added = 0;
+  let removed = 0;
+  const events = {};
+  const layers = { stations:true, exits:true };
+  const map = {
+    getZoom() { return zoom; },
+    getBounds() { return {
+      getSouthWest() { return {lng:center[0]-.03,lat:center[1]-.03}; },
+      getNorthEast() { return {lng:center[0]+.03,lat:center[1]+.03}; }
+    }; },
+    on(name,cb) { events[name]=cb; },
+    add(markers) { added += Array.isArray(markers)?markers.length:1; },
+    remove(markers) { removed += Array.isArray(markers)?markers.length:1; }
+  };
+  class FakeMarker {}
+  class FakePixel {}
+  const store = {get() { return {layers}; }};
+  const window = {JinanStore:store};
+  runInNewContext(read('js/metro-viewport.js'), {
+    window,requestAnimationFrame(fn) { fn(); },Map,Set,Number,Array,Math, String
+  });
+  const groups = {stations:[],exits:[]};
+  const sample = {
+    stations:[
+      {id:'BV1',name:'花园东路(地铁站)',location:'117.1,36.7',address:'3号线',
+        children:[{id:' BX1 ',name:'A口',location:'117.101,36.7',address:'3号线'}]},
+      {id:'BX1',name:'A口',location:'117.101,36.7',address:'3号线'}
+    ],
+    exits:[{id:'BX1',name:'A口',location:'117.101,36.7',address:'3号线'}]
+  };
+  const manager = window.JinanMetroViewportInit({
+    map,AMap:{Marker:FakeMarker,Pixel:FakePixel},groups,
+    lineColors:{3:'#0044bb'},metroPoint:() => ({}),data:sample
+  });
+  assert.equal(manager.counts.stations,1);
+  assert.equal(manager.counts.exits,1);
+  assert.equal(manager.visible().stations,1);
+  assert.equal(manager.visible().exits,0);
+  zoom=16; events.zoomend();
+  assert.equal(manager.visible().exits,1);
+  const addedAfterZoom=added;
+  events.moveend(); // unchanged viewport must not churn markers
+  assert.equal(added,addedAfterZoom);
+  layers.exits=false; manager.update();
+  assert.equal(manager.visible().exits,0);
+  center=[118,38]; events.moveend();
+  assert.equal(manager.visible().stations,0);
+  assert.ok(removed>=2);
+});
+
 test('favorites, history, measurements, backups and validation', () => {
   const values = new Map();
   const listeners = [];
