@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>济南市地图</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif; color: #183b56; }
+    * { box-sizing: border-box; }
+    html, body, #container { width: 100%; height: 100%; margin: 0; }
+    .panel {
+      position: absolute; z-index: 10; top: 22px; left: 22px; width: 320px;
+      padding: 20px; border: 1px solid rgba(255,255,255,.85); border-radius: 20px;
+      background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(241,249,250,.91));
+      box-shadow: 0 14px 40px rgba(15,54,73,.2); backdrop-filter: blur(14px);
+      transition: transform .28s ease, box-shadow .28s ease;
+    }
+    .panel.collapsed { transform: translateX(calc(-100% + 56px)); box-shadow: 0 10px 28px rgba(15,54,73,.16); }
+    .panel-toggle { position: absolute; top: 18px; right: -17px; display: grid; place-items: center; width: 34px; height: 34px; margin: 0; padding: 0; border: 2px solid #fff; border-radius: 50%; color: #176b77; background: #fff; box-shadow: 0 3px 12px rgba(15,54,73,.2); font-size: 24px; line-height: 1; transition: transform .28s ease; }
+    .panel-toggle:hover { background: #f4fcfc; }
+    .panel.collapsed .panel-toggle { transform: rotate(180deg); }
+    .eyebrow { color: #0f8b8d; font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+    h1 { margin: 8px 0 4px; font-size: 26px; letter-spacing: -.04em; }
+    p { margin: 0 0 16px; color: #648091; font-size: 13px; }
+    .search-row { display: flex; gap: 8px; }
+    input, button { height: 40px; border-radius: 10px; font-size: 14px; }
+    input { min-width: 0; flex: 1; padding: 0 12px; border: 1px solid #d5e3e5; outline: none; background: rgba(255,255,255,.8); }
+    input:focus { border-color: #25a6a8; box-shadow: 0 0 0 3px rgba(37,166,168,.13); }
+    button { width: 84px; border: 0; color: #fff; font-weight: 700; background: linear-gradient(135deg,#159a9c,#1677b7); cursor: pointer; }
+    button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .section-title { margin: 18px 0 9px; color: #6e8793; font-size: 12px; font-weight: 700; }
+    .landmarks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .landmark { padding: 9px 10px; border-radius: 10px; background: rgba(230,245,243,.75); color: #2a6170; font-size: 12px; }
+    .landmark strong { display: block; color: #183b56; font-size: 13px; }
+    .tip { margin-top: 15px; padding-top: 12px; border-top: 1px solid #dce9e9; color: #7f969e; font-size: 11px; line-height: 1.6; }
+    /* 覆盖高德默认标签样式，使用轻量的现代气泡 */
+    .amap-marker-label { padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+    .map-label { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid rgba(255,255,255,.9); border-radius: 999px; color: #17465b; background: rgba(255,255,255,.88); box-shadow: 0 3px 12px rgba(20,65,80,.18); font-size: 12px; white-space: nowrap; }
+    .map-label::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #159a9c; box-shadow: 0 0 0 3px rgba(21,154,156,.15); }
+    .community-label { display: inline-flex; align-items: center; gap: 4px; color: #8f200c; font-size: 12px; font-weight: 700; white-space: nowrap; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px #fff; }
+    .community-label::before { content: "住"; display: grid; place-items: center; width: 20px; height: 20px; box-sizing: border-box; flex: none; border: 2px solid #fff; border-radius: 50%; color: #fff; background: #c73517; box-shadow: 0 1px 5px rgba(100,30,10,.5); font-size: 10px; text-shadow: none; }
+    .company-label { display: inline-flex; align-items: center; gap: 4px; color: #075c9b; font-size: 12px; font-weight: 700; white-space: nowrap; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px #fff; }
+    .company-label::before { content: "企"; display: grid; place-items: center; width: 22px; height: 22px; box-sizing: border-box; flex: none; border: 2px solid #fff; border-radius: 50%; color: #fff; background: #126bb0; box-shadow: 0 1px 5px rgba(0,55,110,.5); font-size: 10px; text-shadow: none; }
+    .community-exit { display: inline-flex; align-items: center; padding: 4px 7px; border: 2px solid #fff; border-radius: 8px; color: #fff; background: #dd7a45; box-shadow: 0 2px 8px rgba(105,51,25,.28); font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .research-poi { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; border: 2px solid #fff; border-radius: 999px; color: #fff; background: #1677b7; box-shadow: 0 3px 12px rgba(15,54,73,.3); font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .research-poi::before { content: "AOI"; display: inline-grid; place-items: center; min-width: 22px; height: 17px; padding: 0 3px; border-radius: 5px; color: #1677b7; background: #fff; font-size: 8px; }
+    .research-entry { width: 12px; height: 12px; border: 3px solid #fff; border-radius: 50%; background: #f08a38; box-shadow: 0 0 0 3px rgba(240,138,56,.28), 0 2px 8px rgba(15,54,73,.3); }
+    .metro-point { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; width:11px; height:11px; padding:0; border:1px solid white; border-radius:50%; box-shadow:0 1px 3px #0006; cursor:pointer; }
+    .metro-point-label { display:none; color:white; font-size:10px; font-weight:600; white-space:nowrap; }
+    .metro-point:hover, .metro-point:focus-visible, .metro-point.expanded { width:max-content; height:auto; min-height:16px; padding:1px 5px; border-radius:999px; }
+    .metro-point:hover .metro-point-label, .metro-point:focus-visible .metro-point-label, .metro-point.expanded .metro-point-label { display:block; }
+    .amap-marker:has(.metro-point:hover), .amap-marker:has(.metro-point:focus-visible), .amap-marker:has(.metro-point.expanded) { z-index:1000 !important; }
+    .comparison-list { display:grid; gap:6px; max-height:160px; overflow:auto; }
+    .comparison-item { padding:8px 10px; border:1px solid #dce9e9; border-radius:9px; color:#42606d; background:rgba(255,255,255,.8); font-size:12px; cursor:pointer; }
+    .comparison-item strong { display:block; color:#183b56; }
+    .comparison-item.selected { border-color:#159a9c; background:#e7f7f6; }
+    .line-legend { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    .line-item { display:flex; align-items:center; gap:6px; color:#506d78; font-size:11px; }
+    .line-dot { flex:none; width:9px; height:9px; border-radius:50%; }
+    .poi-status { margin-top:10px; color:#7f969e; font-size:11px; line-height:1.5; }
+    .metro-button { width: 100%; margin-top: 12px; border: 1px solid #c9e0e1; color: #176b77; background: rgba(231,247,246,.8); }
+    .metro-button:hover { background: #d8f1ef; }
+    .metro-modal { display: none; position: fixed; inset: 0; z-index: 30; padding: 5vh 5vw; background: rgba(14,35,48,.52); backdrop-filter: blur(4px); }
+    .metro-modal.open { display: block; }
+    .metro-box { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+    #subwayMap { width: 100%; height: 100%; }
+    .metro-close { position: absolute; z-index: 2; top: 12px; right: 14px; width: 36px; height: 36px; border-radius: 50%; color: #42606d; background: rgba(255,255,255,.92); box-shadow: 0 2px 12px rgba(0,0,0,.16); }
+    .measure-panel { position: absolute; z-index: 12; right: 22px; bottom: 24px; width: 190px; padding: 12px; border: 1px solid rgba(255,255,255,.9); border-radius: 15px; background: rgba(255,255,255,.94); box-shadow: 0 8px 28px rgba(15,54,73,.2); backdrop-filter: blur(12px); }
+    .measure-title { margin-bottom: 8px; color: #345866; font-size: 12px; font-weight: 800; }
+    .measure-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .measure-actions button { width: auto; height: 32px; padding: 0 6px; font-size: 11px; }
+    .measure-actions button.active { background: linear-gradient(135deg,#e0753f,#c54f36); }
+    .measure-result { margin-top: 8px; color: #5d7882; font-size: 11px; line-height: 1.5; }
+    @media (max-width: 700px) {
+      .panel {
+        top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 52vh;
+        overflow: auto; padding: 16px; border-radius: 18px;
+      }
+      .panel.collapsed { transform: translateY(calc(100% - 58px)); }
+      .panel-toggle { top: -17px; right: 18px; width: 36px; height: 36px; font-size: 22px; }
+      .panel.collapsed .panel-toggle { transform: rotate(-90deg); }
+      h1 { font-size: 22px; }
+      .section-title { margin-top: 14px; }
+      .comparison-list { max-height: 132px; }
+      .measure-panel { left: 10px; right: 10px; bottom: auto; top: 10px; width: auto; padding: 10px; border-radius: 13px; }
+      .measure-actions { grid-template-columns: repeat(3, 1fr); }
+      .measure-actions button { min-width: 0; font-size: 12px; }
+      .measure-result { margin-top: 6px; }
+      .search-row input, .search-row button { height: 44px; }
+      .comparison-item { padding: 11px 10px; }
+      .metro-modal { padding: 2vh 2vw; }
+      .metro-box { border-radius: 14px; }
+    }
+    @media (max-width: 380px) {
+      .panel { max-height: 56vh; }
+      .landmarks, .line-legend { grid-template-columns: 1fr; }
+      .search-row button { width: 76px; }
+      .measure-actions { grid-template-columns: 1fr 1fr; }
+      .measure-actions button:last-child { grid-column: 1 / -1; }
+    }
+  </style>
+  <script src="./config.local.js"></script>
+  <script>
+    window._AMapSecurityConfig = { securityJsCode: window.JINAN_MAP_CONFIG?.securityJsCode || "" };
+  </script>
+  <script src="https://webapi.amap.com/loader.js"></script>
+</head>
+<body>
+  <div id="container"></div>
+  <section class="panel">
+    <button id="panelToggle" class="panel-toggle" aria-label="收起信息面板" title="收起信息面板">‹</button>
+    <div class="eyebrow">SPRING CITY · JINAN</div>
+    <h1>济南市地图</h1>
+    <p>一城山色半城湖，探索泉城的城市坐标</p>
+    <div class="search-row"><input id="keyword" placeholder="输入小区名称" /><button id="search">打点</button></div>
+    <div class="section-title">小区对比列表</div>
+    <div id="communityList" class="comparison-list"><div class="comparison-item">输入小区名称后，将展示小区位置与高德记录的出入口数量。</div></div>
+    <div class="section-title">高德地铁线路</div>
+    <div class="line-legend">
+      <div class="line-item"><i class="line-dot" style="background:#B3499B"></i>1号线 · 已开通</div>
+      <div class="line-item"><i class="line-dot" style="background:#E7A928"></i>2号线 · 已开通</div>
+      <div class="line-item"><i class="line-dot" style="background:#164D9C"></i>3号线 · 已开通</div>
+      <div class="line-item"><i class="line-dot" style="background:#2F9248"></i>4号线 · 已开通</div>
+      <div class="line-item"><i class="line-dot" style="background:#55B9E8"></i>6号线 · 已开通</div>
+      <div class="line-item"><i class="line-dot" style="background:#18A6B8"></i>8号线 · 已开通</div>
+      <div class="line-item"><i class="line-dot" style="background:#FF0000"></i>7号线 · 待开通</div>
+      <div class="line-item"><i class="line-dot" style="background:#D35B93"></i>9号线 · 待开通</div>
+    </div>
+    <div id="poiStatus" class="poi-status">正在从高德同步地铁站与出入口…</div>
+    <button id="metroButton" class="metro-button">查看清晰地铁线路图</button>
+    <div class="tip">地图中心：济南市 · 同步完成后请放大地图查看密集的站点与出入口</div>
+  </section>
+  <div id="metroModal" class="metro-modal" aria-label="济南地铁线路图">
+    <div class="metro-box"><button id="metroClose" class="metro-close" aria-label="关闭">×</button><div id="subwayMap"></div></div>
+  </div>
+  <aside class="measure-panel">
+    <div class="measure-title">地图测距</div>
+    <div class="measure-actions">
+      <button id="segmentMeasure">折线测距</button>
+      <button id="walkMeasure">两点步行</button>
+      <button id="clearMeasure">清除结果</button>
+    </div>
+    <div id="measureResult" class="measure-result">请选择一种测距方式</div>
+  </aside>
+  <script src="./amap-metro-poi-data.js"></script>
+
+  <script>
+    const AMAP_JSAPI_KEY = window.JINAN_MAP_CONFIG?.jsApiKey || "";
+    const AMAP_WEBSERVICE_KEY = window.JINAN_MAP_CONFIG?.webServiceKey || "";
+    const communities = [];
+    const metroLines = [
+      { no: "1", color: "#B3499B" }, { no: "2", color: "#E7A928" },
+      { no: "3", color: "#164D9C" }, { no: "4", color: "#2F9248" },
+      { no: "6", color: "#55B9E8" }, { no: "8", color: "#18A6B8" },
+      { no: "7", color: "#FF0000" }, { no: "9", color: "#D35B93" }
+    ];
+
+    AMapLoader.load({
+      key: AMAP_JSAPI_KEY,
+      version: "2.0",
+      plugins: ["AMap.PlaceSearch", "AMap.Scale", "AMap.ToolBar", "AMap.MouseTool", "AMap.Walking"]
+    })
+      .then((AMap) => {
+        const map = new AMap.Map("container", {
+          zoom: 12,
+          center: [117.12, 36.65],
+          viewMode: "3D",
+          mapStyle: "amap://styles/normal"
+        });
+        map.addControl(new AMap.Scale());
+        map.addControl(new AMap.ToolBar());
+
+        // 逐线路、逐页请求高德 Web 服务 POI；children=1 会返回每个地铁站的出入口子 POI。
+        const stationIds = new Set();
+        const exitIds = new Set();
+        const poiStatus = document.getElementById("poiStatus");
+        const toLngLat = (location) => String(location).split(",").map(Number);
+        const fetchPoi = async (keyword, children = "0") => {
+          if (!AMAP_WEBSERVICE_KEY) throw new Error("请先在 config.local.js 配置 Web 服务 Key");
+          const query = new URLSearchParams({
+            key: AMAP_WEBSERVICE_KEY, keywords: keyword, city: "370100", citylimit: "true",
+            children, offset: "50", page: "1", extensions: "all"
+          });
+          const response = await fetch(`https://restapi.amap.com/v3/place/text?${query}`);
+          if (!response.ok) throw new Error("高德 POI 请求失败");
+          return response.json();
+        };
+        const communityIds = new Set();
+        const communityExitIds = new Set();
+        const listedCommunities = new Set();
+        const communityRecords = new Map();
+        const pendingCommunityItems = new Map();
+        const communityList = document.getElementById("communityList");
+        const addPendingCommunityItem = (community) => {
+          if (pendingCommunityItems.has(community.keyword)) return;
+          const item = document.createElement("div");
+          item.className = "comparison-item pending";
+          item.innerHTML = `<strong>${community.name}</strong>正在查询高德小区位置…`;
+          item.addEventListener("click", () => loadCommunity(community, true));
+          pendingCommunityItems.set(community.keyword, item);
+          communityList.prepend(item);
+        };
+        const loadCommunity = async (community, focus = false) => {
+          addPendingCommunityItem(community);
+          const communityData = await fetchPoi(community.keyword, "1");
+          let exitData = { pois: [] };
+          try { exitData = await fetchPoi(community.exitKeyword); } catch { /* 小区位置仍可正常显示 */ }
+          const pois = communityData.pois || [];
+          const parent = pois.find((poi) => /住宅小区/.test(poi.type || ""))
+            || pois.find((poi) => poi.location && new RegExp(community.keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(poi.name || ""))
+            || pois.find((poi) => poi.location);
+          if (!parent?.location) throw new Error("未找到小区 POI");
+          const position = toLngLat(parent.location);
+          let communityMarker = communityRecords.get(parent.id)?.marker;
+          if (!communityIds.has(parent.id)) {
+            communityIds.add(parent.id);
+            communityMarker = new AMap.Marker({ position, title: community.name, content: `<div class="community-label">${community.name}</div>`, offset: new AMap.Pixel(-10, -10), zIndex: 300 });
+            map.add(communityMarker);
+          }
+          communityRecords.set(parent.id, { position, marker: communityMarker, name: parent.name });
+          const exits = [...(parent?.children || []), ...(exitData.pois || [])];
+          let newExitCount = 0;
+          exits.filter((poi) => poi.location && /出入口|停车场/.test(`${poi.name || ""}${poi.type || ""}`)
+           ).forEach((poi) => {
+            const exitId = poi.id || `${community.name}-${poi.location}-${poi.name}`;
+            if (communityExitIds.has(exitId)) return;
+            communityExitIds.add(exitId);
+            newExitCount += 1;
+            const shortName = (poi.sname || poi.name || "出入口").replace(/内部地下停车场/g, "停车场").trim();
+            map.add(new AMap.Marker({ position: toLngLat(poi.location), title: poi.name, content: `<div class="community-exit">${shortName}</div>`, offset: new AMap.Pixel(-18, -14), zIndex: 290 }));
+          });
+          if (!listedCommunities.has(parent.id)) {
+            listedCommunities.add(parent.id);
+            pendingCommunityItems.get(community.keyword)?.remove();
+            pendingCommunityItems.delete(community.keyword);
+            const item = document.createElement("div");
+            item.className = "comparison-item";
+            item.innerHTML = `<strong>${parent.name}</strong>高德记录 ${newExitCount} 个出入口 · ${parent.address || "济南市"}`;
+            item.addEventListener("click", () => {
+              const record = communityRecords.get(parent.id);
+              if (!record) return;
+              map.setZoomAndCenter(17, record.position, false, 500);
+              communityList.querySelectorAll(".comparison-item.selected").forEach((node) => node.classList.remove("selected"));
+              item.classList.add("selected");
+            });
+            communityList.prepend(item);
+          }
+          if (focus) map.setZoomAndCenter(17, position, false, 500);
+        };
+        communities.forEach((community) => loadCommunity(community).catch(() => {
+          const item = pendingCommunityItems.get(community.keyword);
+          if (item) item.innerHTML = `<strong>${community.name}</strong>暂未找到高德小区 POI，可点击后重试`;
+        }));
+        const lineColors = Object.fromEntries(metroLines.map((line) => [line.no, line.color]));
+        const metroPoint = (label, background) => {
+          const point = document.createElement("button");
+          point.type = "button";
+          point.className = "metro-point";
+          point.style.background = background;
+          point.setAttribute("aria-label", label);
+          point.setAttribute("aria-expanded", "false");
+          const text = document.createElement("span");
+          text.className = "metro-point-label";
+          text.textContent = label;
+          point.appendChild(text);
+          point.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const expanded = !point.classList.contains("expanded");
+            document.querySelectorAll(".metro-point.expanded").forEach((item) => {
+              item.classList.remove("expanded");
+              item.setAttribute("aria-expanded", "false");
+            });
+            point.classList.toggle("expanded", expanded);
+            point.setAttribute("aria-expanded", String(expanded));
+          });
+          return point;
+        };
+        map.on("click", () => document.querySelectorAll(".metro-point.expanded").forEach((item) => {
+          item.classList.remove("expanded");
+          item.setAttribute("aria-expanded", "false");
+        }));
+        const addStationAndExits = (poi) => {
+          if (!poi.location) return;
+          const lineNos = [...new Set((String(poi.address || "").match(/\d+(?=号线)/g) || []))];
+          const stationKey = `${poi.name}-${poi.location}`;
+          if (!stationIds.has(stationKey)) {
+            stationIds.add(stationKey);
+            const stationName = (poi.name || "").replace(/\(地铁站\)|（地铁站）/g, "");
+            const lineText = lineNos.length ? lineNos.join("/") : "M";
+            const colors = lineNos.map((no) => lineColors[no] || "#667085");
+            const background = colors.length > 1 ? `linear-gradient(135deg,${colors.join(",")})` : colors[0] || "#667085";
+            const content = metroPoint(`${lineText} ${stationName}`, background);
+            map.add(new AMap.Marker({ position: toLngLat(poi.location), content, offset: new AMap.Pixel(-5, -5), zIndex: 20 }));
+          }
+          (poi.children || []).forEach((exit) => {
+            if (!exit.location || exitIds.has(exit.id)) return;
+            exitIds.add(exit.id);
+            const shortName = (exit.sname || exit.name || "出口").trim();
+            const color = lineColors[lineNos[0]] || "#3949ab";
+            const content = metroPoint(shortName, color);
+            map.add(new AMap.Marker({ position: toLngLat(exit.location), content, offset: new AMap.Pixel(-5, -5), zIndex: 10 }));
+          });
+        };
+        const addStandaloneExit = (exit) => {
+          if (!exit.location || exitIds.has(exit.id)) return;
+          exitIds.add(exit.id);
+          const lineNo = (String(exit.address || "").match(/\d+(?=号线)/) || [])[0];
+          const color = lineColors[lineNo] || "#3949ab";
+          const shortName = (exit.sname || exit.name || "出口").trim();
+          const content = metroPoint(shortName, color);
+          map.add(new AMap.Marker({ position: toLngLat(exit.location), content, offset: new AMap.Pixel(-5, -5), zIndex: 10 }));
+        };
+        const loadAllMetroStations = () => {
+          const data = window.AMAP_OFFLINE_METRO_DATA || { stations: [], exits: [] };
+          (data.stations || []).forEach(addStationAndExits);
+          (data.exits || []).forEach(addStandaloneExit);
+        };
+        try {
+          loadAllMetroStations();
+          poiStatus.textContent = `本地高德 POI 快照：${stationIds.size} 个地铁站、${exitIds.size} 个出入口`;
+        } catch {
+          poiStatus.textContent = "本地地铁 POI 数据加载失败，请刷新重试";
+        }
+
+        const search = async () => {
+          const keyword = document.getElementById("keyword").value.trim();
+          if (!keyword) return;
+          const button = document.getElementById("search");
+          button.disabled = true;
+          button.textContent = "打点中";
+          try {
+            await loadCommunity({ name: keyword, keyword, exitKeyword: `${keyword} 出入口` }, true);
+          } catch {
+            alert("没有找到该小区，或高德暂未收录其小区 POI。");
+          } finally {
+            button.disabled = false;
+            button.textContent = "打点";
+          }
+        };
+        document.getElementById("search").addEventListener("click", search);
+        document.getElementById("keyword").addEventListener("keydown", (event) => {
+          if (event.key === "Enter") search();
+        });
+        const panel = document.querySelector(".panel");
+        const panelToggle = document.getElementById("panelToggle");
+        panelToggle.addEventListener("click", () => {
+          const collapsed = panel.classList.toggle("collapsed");
+          panelToggle.setAttribute("aria-label", collapsed ? "展开信息面板" : "收起信息面板");
+          panelToggle.setAttribute("title", collapsed ? "展开信息面板" : "收起信息面板");
+        });
+
+        const measureResult = document.getElementById("measureResult");
+        const segmentButton = document.getElementById("segmentMeasure");
+        const walkButton = document.getElementById("walkMeasure");
+        const mouseTool = new AMap.MouseTool(map);
+        let measureOverlays = [];
+        let walkMode = false;
+        let walkPoints = [];
+        let walking = null;
+        const setActive = (button) => [segmentButton, walkButton].forEach((item) => item.classList.toggle("active", item === button));
+        const distanceOf = (path) => path.slice(1).reduce((sum, point, index) => {
+          const previous = path[index];
+          const lat1 = previous.lat * Math.PI / 180;
+          const lat2 = point.lat * Math.PI / 180;
+          const dLat = lat2 - lat1;
+          const dLng = (point.lng - previous.lng) * Math.PI / 180;
+          const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+          return sum + 6378137 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }, 0);
+        const formatDistance = (meters) => meters >= 1000 ? `${(meters / 1000).toFixed(2)} 公里` : `${Math.round(meters)} 米`;
+        const stopModes = () => {
+          mouseTool.close(false);
+          walkMode = false;
+          map.setStatus({ dragEnable: true });
+          map.setDefaultCursor("default");
+          setActive(null);
+        };
+
+        mouseTool.on("draw", (event) => {
+          const path = event.obj.getPath();
+          measureOverlays.push(event.obj);
+          measureResult.textContent = `折线距离：${formatDistance(distanceOf(path))}`;
+          stopModes();
+        });
+        segmentButton.addEventListener("click", () => {
+          stopModes();
+          setActive(segmentButton);
+          measureResult.textContent = "依次点击折点，双击结束绘制";
+          mouseTool.polyline({ strokeColor: "#e35b38", strokeWeight: 5, strokeOpacity: .9 });
+        });
+        walkButton.addEventListener("click", () => {
+          stopModes();
+          walkMode = true;
+          walkPoints = [];
+          map.setDefaultCursor("crosshair");
+          setActive(walkButton);
+          measureResult.textContent = "请在地图上依次点击起点和终点";
+        });
+        map.on("click", (event) => {
+          if (!walkMode) return;
+          walkPoints.push(event.lnglat);
+          const marker = new AMap.Marker({ position: event.lnglat, zIndex: 400 });
+          map.add(marker);
+          measureOverlays.push(marker);
+          if (walkPoints.length < 2) {
+            measureResult.textContent = "起点已选择，请点击终点";
+            return;
+          }
+          walkMode = false;
+          setActive(null);
+          walking = new AMap.Walking({ map, hideMarkers: true });
+          walking.search(walkPoints[0], walkPoints[1], (status, result) => {
+            if (status === "complete" && result.routes?.length) {
+              measureResult.textContent = `步行距离：${formatDistance(Number(result.routes[0].distance))}`;
+            } else {
+              measureResult.textContent = "未能规划步行路线";
+            }
+          });
+        });
+        document.getElementById("clearMeasure").addEventListener("click", () => {
+          stopModes();
+          if (walking) { walking.clear(); walking = null; }
+          map.remove(measureOverlays);
+          measureOverlays = [];
+          walkPoints = [];
+          measureResult.textContent = "已清除测距结果";
+        });
+
+        const modal = document.getElementById("metroModal");
+        document.getElementById("metroButton").addEventListener("click", () => {
+          modal.classList.add("open");
+          if (window.jinanSubway) return;
+          window.initJinanSubway = () => {
+            // 按高德地铁图 JS API 高级指南手动初始化济南线网。
+            window.jinanSubway = subway("subwayMap", {
+              adcode: "370100",
+              theme: "colorful",
+              client: 0,
+              doubleclick: { switch: true }
+            });
+            window.jinanSubway.event.on("subway.complete", () => {
+              // 高德接口完成加载后会自动适配整张济南线网。
+            });
+            window.jinanSubway.event.on("station.touch", (event, info) => {
+              if (!info || !info.id) return;
+              window.jinanSubway.stopAnimation();
+              window.jinanSubway.addInfoWindow(info.id, {});
+              window.jinanSubway.setCenter(window.jinanSubway.getStCenter(info.id));
+            });
+            window.jinanSubway.event.on("lineName.touch", (event, info) => {
+              if (!info || !info.id) return;
+              window.jinanSubway.showLine(info.id);
+              window.jinanSubway.setCenter(window.jinanSubway.getSelectedLineCenter());
+            });
+            window.jinanSubway.event.on("subway.touch", () => window.jinanSubway.clearInfoWindow());
+          };
+          const script = document.createElement("script");
+          script.src = `https://webapi.amap.com/subway?v=1.0&key=${AMAP_JSAPI_KEY}&callback=initJinanSubway`;
+          document.head.appendChild(script);
+        });
+        document.getElementById("metroClose").addEventListener("click", () => modal.classList.remove("open"));
+        modal.addEventListener("click", (event) => { if (event.target === modal) modal.classList.remove("open"); });
+      })
+      .catch((error) => {
+        document.getElementById("container").innerHTML =
+          `<div style="padding:24px;font:16px system-ui">地图加载失败：${error.message}<br>请检查 JSAPI Key 和安全密钥配置。</div>`;
+      });
+  </script>
+</body>
+</html>
