@@ -49,7 +49,7 @@ test('PWA caches only the shell, not remote or private API responses', () => {
   assert.equal(manifest.start_url,'/');
   assert.ok(manifest.icons.length);
   const sw = read('sw.js');
-  assert.match(sw, /url\.pathname\.startsWith\('\/api\/'\)/);
+  assert.match(sw, /url\.pathname\.startsWith\(PREFIX \+ '\/api\/'\)/);
   assert.match(sw, /\/_AMapService\//);
   assert.doesNotMatch(sw, /restapi\.amap\.com/);
 });
