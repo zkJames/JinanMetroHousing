@@ -1,0 +1,110 @@
+/* Tablet-first enhancements for Huawei MatePad 12.2. Loaded after existing styles. */
+:root { --ui-ink:#163b50; --ui-blue:#116d83; --ui-line:#d6e6e9; --ui-shadow:0 12px 36px rgba(13,48,65,.18); }
+html, body { overscroll-behavior: none; }
+button, input { -webkit-tap-highlight-color: transparent; }
+button { touch-action: manipulation; }
+body { background:#e9f2f3; }
+#container { position:fixed; inset:0; }
+.app-topbar { position:fixed; z-index:55; left:50%; top:calc(10px + env(safe-area-inset-top,0px)); transform:translateX(-50%);
+  display:flex; align-items:center; gap:8px; max-width:calc(100% - 28px);
+  padding:7px 10px; background:rgba(255,255,255,.96); border:1px solid var(--ui-line);
+  border-radius:18px; box-shadow:var(--ui-shadow); backdrop-filter:blur(12px); white-space:nowrap; }
+.app-brand { font-size:15px; font-weight:800; padding:0 9px 0 3px; color:var(--ui-ink); }
+.app-brand small { display:block; font-size:10px; font-weight:500; color:#78909a; }
+.topbar-actions { display:flex; align-items:center; gap:5px; overflow-x:auto; scrollbar-width:none; }
+.topbar-actions::-webkit-scrollbar { display:none; }
+.topbar-button { width:auto; min-width:66px; height:42px; padding:0 12px; border:1px solid transparent; border-radius:12px;
+  background:transparent; color:#28576a; font-size:13px; font-weight:700; white-space:nowrap; }
+.topbar-button:hover, .topbar-button.selected { background:#e2f5f4; border-color:#b6dedb; transform:none; }
+.panel { top:85px; left:16px; bottom:auto; width:326px; max-height:calc(100dvh - 185px); overflow-y:auto; padding:17px; z-index:32; }
+.panel h1 { font-size:22px; }
+.panel .tip { margin-top:12px; }
+.panel-toggle { min-width:36px; width:36px; height:36px; }
+.measure-panel { z-index:60; position:fixed; left:50%; right:auto; bottom:calc(13px + env(safe-area-inset-bottom,0px)); top:auto;
+  transform:translateX(-50%); width:min(670px,calc(100vw - 32px)); padding:11px 14px; border-radius:18px; }
+.measure-title { display:flex; justify-content:space-between; align-items:center; margin-bottom:7px; font-size:12px; }
+.measure-hint { font-size:11px; color:#75929b; font-weight:500; }
+.measure-actions { display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
+.measure-actions button { width:auto; min-width:62px; height:40px; padding:0 11px; font-size:12px;
+  border-radius:11px; font-weight:700; white-space:nowrap; }
+.measure-actions button.primary-tool { color:white; background:#167b8d; }
+.measure-actions button.secondary-tool { color:#3a6674; background:#e7f3f4; border:1px solid #d0e5e7; }
+.measure-actions button:disabled { opacity:.4; }
+.measure-result { margin-top:7px; min-height:17px; font-size:12px; font-variant-numeric:tabular-nums; }
+.map-quick-tools { position:fixed; z-index:45; right:16px; top:85px; display:grid; gap:7px; }
+.map-quick-btn { width:46px; height:46px; border-radius:14px; font-size:24px; background:rgba(255,255,255,.94);
+  color:var(--ui-ink); border:1px solid var(--ui-line); box-shadow:0 6px 20px rgba(15,54,73,.14); }
+.finger-draw-layer { display:none; position:fixed; inset:0; z-index:41; pointer-events:none; touch-action:none; cursor:crosshair; }
+.quick-drawer { position:fixed; z-index:53; top:80px; right:72px; width:min(370px,calc(100vw - 30px));
+  max-height:calc(100dvh - 205px); overflow-y:auto; padding:16px; background:rgba(255,255,255,.97);
+  border:1px solid var(--ui-line); border-radius:18px; box-shadow:var(--ui-shadow); }
+.quick-drawer[hidden] { display:none !important; }
+.drawer-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; color:var(--ui-ink); }
+.drawer-close { width:auto; height:34px; border-radius:10px; padding:0 12px; color:#47717e; background:#edf4f4; font-size:12px; }
+.drawer-note { font-size:13px; color:#617d8a; line-height:1.7; margin:9px 0; }
+.drawer-list-row { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:8px 0; padding:10px;
+  border-radius:13px; border:1px solid #dcebed; background:#f8fbfb; }
+.drawer-list-row strong { flex:1 0 62%; font-size:13px; }
+.drawer-list-row small { flex:1 0 100%; color:#758e9a; font-size:11px; }
+.drawer-action { width:auto; height:36px; padding:0 13px; background:#e3f2f2; color:#236a7b; font-size:12px; }
+.drawer-switch { display:flex; gap:12px; align-items:center; padding:13px 10px; border-bottom:1px solid #ebf0f1;
+  font-size:14px; color:#234b5b; }
+.drawer-switch input { flex:none; width:20px; height:20px; accent-color:#15879a; }
+.history-chip { display:inline-block; width:auto; height:40px; margin:5px; padding:0 13px;
+  font-size:12px; color:#1a6676; background:#e9f4f4; }
+.backup-file { display:none; }
+.favorite-toggle { float:right; margin-left:10px; width:37px; height:37px; padding:0; color:#b66935;
+  font-size:22px; background:#f3eee8; border:1px solid #e9dcd1; border-radius:10px; }
+.favorite-toggle:hover { transform:none; }
+.comparison-item { min-height:50px; line-height:1.5; }
+.comparison-item strong { padding-top:3px; }
+.metro-modal { z-index:90; }
+#pwaStatus { color:#7793a0; font-size:10px; display:none; }
+@media (max-height:690px) and (min-width:860px) {
+  .panel { top:76px; max-height:calc(100dvh - 165px); }
+  .quick-drawer { top:76px; max-height:calc(100dvh - 168px); }
+  .measure-panel { padding:7px 12px; }
+  .measure-actions button { height:36px; }
+}
+@media (max-width:920px) and (orientation:portrait) {
+  .app-topbar { left:8px; right:8px; top:calc(8px + env(safe-area-inset-top,0px)); transform:none; width:auto; }
+  .app-brand { display:none; }
+  .panel { left:10px; right:10px; top:auto; bottom:calc(138px + env(safe-area-inset-bottom,0px)); width:auto;
+    max-height:32dvh; padding:12px; border-radius:17px; }
+  .panel.collapsed { transform:translateY(calc(100% - 45px)); }
+  .measure-panel { left:8px; right:8px; transform:none; width:auto; bottom:calc(8px + env(safe-area-inset-bottom,0px)); }
+  .measure-actions { flex-wrap:nowrap; overflow-x:auto; padding:0 0 2px; }
+  .measure-actions button { flex:none; height:40px; }
+  .map-quick-tools { right:10px; top:75px; }
+  .quick-drawer { top:70px; right:10px; max-height:55dvh; }
+}
+@media (max-width:760px) and (orientation:landscape) {
+  .app-brand { display:none; }
+  .app-topbar { top:6px; padding:4px; }
+  .topbar-button { padding:0 8px; min-width:48px; height:36px; }
+  .panel { top:57px; max-height:calc(100dvh - 137px); }
+  .quick-drawer { top:57px; max-height:calc(100dvh - 135px); }
+  .map-quick-tools { top:59px; }
+}
+@media (max-width:600px) {
+  .app-topbar { width:calc(100% - 12px); left:6px; right:6px; padding:4px; }
+  .topbar-button { min-width:0; height:36px; padding:0 8px; font-size:12px; }
+  .measure-hint { display:none; }
+  .panel .landmarks { display:none; }
+  .quick-drawer { top:64px; right:7px; max-height:45dvh; }
+}
+@media (prefers-reduced-motion:reduce) { *, *::before, *::after { transition-duration:0s !important; } }
+
+/* Standalone map does not show the host's navigation. */
+.seasons-back { display:none; text-decoration:none; align-items:center; }
+.seasons-hosted .seasons-back { display:inline-flex; }
+
+/* More useful scrollable housing list on Huawei MatePad 12.2. */
+.comparison-list { max-height:min(37dvh,310px); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.featured-item { display:flow-root; min-height:59px; padding:9px 10px; }
+.featured-item strong { font-size:13px; margin-bottom:4px; line-height:1.4; }
+.featured-description { display:block; color:#718f99; font-size:11px; line-height:1.45; }
+.featured-label { max-width:150px; font-size:12px; }
+.sales-label { color:#9b5c18; }
+.sales-label::before { content:'售'; background:#aa7934; }
+@media (orientation:portrait) { .comparison-list { max-height:17dvh; } }
