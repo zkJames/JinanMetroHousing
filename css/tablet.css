@@ -94,3 +94,7 @@ body { background:#e9f2f3; }
   .quick-drawer { top:64px; right:7px; max-height:45dvh; }
 }
 @media (prefers-reduced-motion:reduce) { *, *::before, *::after { transition-duration:0s !important; } }
+
+/* Standalone map does not show the host's navigation. */
+.seasons-back { display:none; text-decoration:none; align-items:center; }
+.seasons-hosted .seasons-back { display:inline-flex; }
