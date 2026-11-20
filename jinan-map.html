@@ -9,6 +9,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <link rel="manifest" href="./manifest.webmanifest"/>
   <link rel="icon" href="./icons/metro.svg" type="image/svg+xml"/>
+  <script>
+    // Use an isolated PWA scope when the map is mounted below Our Seasons /metro/.
+    if (location.pathname.startsWith("/metro/")) {
+      document.querySelector('link[rel="manifest"]').href = "./manifest-metro.webmanifest";
+    }
+  </script>
+
   <style>
     :root { font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif; color: #183b56; }
     * { box-sizing: border-box; }
@@ -106,10 +113,10 @@
   </style>
   <link rel="stylesheet" href="./css/tablet.css"/>
   <script src="./config.local.js"></script>
-  <script src="/api/config"></script>
+  <script src="./api/config"></script>
   <script>
     window._AMapSecurityConfig = window.JINAN_MAP_CONFIG?.useProxy
-      ? { serviceHost: location.origin + "/_AMapService" }
+      ? { serviceHost: location.origin + (location.pathname.startsWith("/metro/") ? "/metro" : "") + "/_AMapService" }
       : { securityJsCode: window.JINAN_MAP_CONFIG?.securityJsCode || "" };
   </script>
   <script src="https://webapi.amap.com/loader.js"></script>
@@ -234,7 +241,7 @@
             keywords: keyword, city: "370100", citylimit: "true",
             children, offset: "50", page: "1", extensions: "all"
           });
-          const endpoint = window.JINAN_MAP_CONFIG?.proxyPoi ? "/api/poi" : "https://restapi.amap.com/v3/place/text";
+          const endpoint = window.JINAN_MAP_CONFIG?.proxyPoi ? new URL("./api/poi", location.href).pathname : "https://restapi.amap.com/v3/place/text";
           const response = await fetch(endpoint + "?" + query, { signal: AbortSignal.timeout(9000) });
           if (!response.ok) throw new Error("高德 POI 请求失败");
           return response.json();
