@@ -32,6 +32,14 @@ test('HTML includes tablet-first controls and PWA metadata', () => {
   assert.match(html, /rel="manifest"/);
   assert.match(html, /serviceHost/);
   assert.match(html, /JinanMeasureInit/);
+  // Cross-check element IDs referenced by tablet modules against the rendered HTML:
+  // a missing measurePanel previously caused a null.classList runtime crash.
+  for (const path of ['js/tablet-measure.js', 'js/tablet-ui.js']) {
+    const source = read(path);
+    for (const [, id] of source.matchAll(/document\.getElementById\(['"]([^'"]+)['"]\)/g)) {
+      assert.match(html, new RegExp('id="' + id + '"'), path + ' references missing #' + id);
+    }
+  }
   assert.doesNotMatch(html, /new AMap\.MouseTool/);
 });
 
