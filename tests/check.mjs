@@ -54,6 +54,23 @@ test('PWA caches only the shell, not remote or private API responses', () => {
   assert.doesNotMatch(sw, /restapi\.amap\.com/);
 });
 
+test('Our Seasons module works under /metro/ without touching root paths', () => {
+  const html = read('jinan-map.html');
+  const index = read('index.html');
+  const sw = read('sw.js');
+  const scoped = JSON.parse(read('manifest-metro.webmanifest'));
+  assert.equal(scoped.start_url, '/metro/');
+  assert.equal(scoped.scope, '/metro/');
+  assert.equal(scoped.icons[0].src, '/metro/icons/metro.svg');
+  assert.match(html, /\.\/api\/config/);
+  assert.match(html, /\.\/api\/poi/);
+  assert.match(html, /location\.pathname\.startsWith\("\/metro\/"/);
+  assert.match(index, /\.\/jinan-map\.html/);
+  assert.doesNotMatch(index, /href="\/jinan-map\.html"/);
+  assert.match(sw, /PREFIX/);
+  assert.match(sw, /self\.registration\.scope/);
+});
+
 test('Vercel maps the official AMap serviceHost prefix to server code', () => {
   const cfg = JSON.parse(read('vercel.json'));
   assert.ok(cfg.rewrites.some(row => row.source === '/_AMapService/:path*'));
