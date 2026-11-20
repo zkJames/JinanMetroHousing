@@ -27,8 +27,13 @@
       Object.keys(groups).forEach(function (key) {
         var overlays = groups[key];
         if (!overlays.length) return;
-        if (settings[key]) map.add(overlays);
-        else map.remove(overlays);
+        if (settings[key]) {
+          // Overlay groups were already added during initial map load. Avoid
+          // inserting thousands of markers a second time on tablet startup.
+          overlays.forEach(function (overlay) {
+            if (typeof overlay.getMap === 'function' && !overlay.getMap()) map.add(overlay);
+          });
+        } else map.remove(overlays);
       });
     }
     function close() {
