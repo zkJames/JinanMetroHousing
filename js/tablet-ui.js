@@ -21,10 +21,11 @@
     var buttons = Array.from(document.querySelectorAll('[data-drawer]'));
     var current = '';
     var groups = config.layers;
-    var labels = { lines: '地铁线路', stations: '地铁站', exits: '地铁出入口', communityExits: '楼盘出入口' };
+    var labels = { lines: '地铁线路', stations: '地铁站', exits: '地铁出入口', communityExits: '楼盘出入口', communities: '重点楼盘' };
     function applyLayers() {
       var settings = store.get().layers;
       Object.keys(groups).forEach(function (key) {
+        if (key === 'stations' || key === 'exits') return; // viewport manager handles these
         var overlays = groups[key];
         if (!overlays.length) return;
         if (settings[key]) {
@@ -35,6 +36,7 @@
           });
         } else map.remove(overlays);
       });
+      if (window.JinanMetroViewport) window.JinanMetroViewport.update();
     }
     function close() {
       current = '';
@@ -170,6 +172,7 @@
         Object.keys(groups).forEach(function (key) {
           if (!layers[key]) map.remove(groups[key]);
         });
+        if (window.JinanMetroViewport) window.JinanMetroViewport.update();
       },
       applyLayers: applyLayers
     };
