@@ -123,7 +123,7 @@
       <div class="line-item"><i class="line-dot" style="background:#2F9248"></i>4号线 · 已开通</div>
       <div class="line-item"><i class="line-dot" style="background:#55B9E8"></i>6号线 · 已开通</div>
       <div class="line-item"><i class="line-dot" style="background:#18A6B8"></i>8号线 · 已开通</div>
-      <div class="line-item"><i class="line-dot" style="background:#FF0000"></i>7号线 · 待开通</div>
+      <div class="line-item"><i class="line-dot" style="background:#FF0000"></i>7号线 · 在建（参考走向）</div>
       <div class="line-item"><i class="line-dot" style="background:#D35B93"></i>9号线 · 待开通</div>
     </div>
     <div id="poiStatus" class="poi-status">正在从高德同步地铁站与出入口…</div>
@@ -143,6 +143,8 @@
     <div id="measureResult" class="measure-result">请选择一种测距方式</div>
   </aside>
   <script src="./amap-metro-poi-data.js"></script>
+  <script src="./metro-line7-data.js"></script>
+  <script src="./metro-lines-data.js"></script>
 
   <script>
     const AMAP_JSAPI_KEY = window.JINAN_MAP_CONFIG?.jsApiKey || "";
@@ -169,6 +171,20 @@
         });
         map.addControl(new AMap.Scale());
         map.addControl(new AMap.ToolBar());
+        Object.entries(window.JINAN_METRO_LINES || {}).forEach(([number, paths]) => {
+          const color = metroLines.find((line) => line.no === number)?.color || "#667085";
+          paths.forEach((path) => map.add(new AMap.Polyline({
+            path, strokeColor: color, strokeWeight: 5, strokeOpacity: 0.9,
+            strokeStyle: "solid", zIndex: 15
+          })));
+        });
+        if (Array.isArray(window.JINAN_LINE_7) && window.JINAN_LINE_7.length > 1) {
+          map.add(new AMap.Polyline({
+            path: window.JINAN_LINE_7,
+            strokeColor: "#FF0000", strokeWeight: 5, strokeOpacity: 0.9,
+            strokeStyle: "solid", zIndex: 15
+          }));
+        }
 
         // 逐线路、逐页请求高德 Web 服务 POI；children=1 会返回每个地铁站的出入口子 POI。
         const stationIds = new Set();
