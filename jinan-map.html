@@ -213,7 +213,7 @@
           mapStyle: "amap://styles/normal"
         });
         map.addControl(new AMap.Scale());
-        map.addControl(new AMap.ToolBar());
+        // The tablet toolbar replaces AMap.ToolBar to avoid duplicate controls.
         const registerOverlay = (layer, overlay) => {
           layerGroups[layer].push(overlay);
           map.add(overlay);
@@ -285,11 +285,10 @@
         };
         const loadCommunity = async (community, focus = false) => {
           addPendingCommunityItem(community);
-          const communityRequest = fetchPoi(community.keyword, "1");
-          const exitRequest = community.exitKeyword
-            ? fetchPoi(community.exitKeyword).catch(() => ({ pois: [] }))
-            : Promise.resolve({ pois: [] });
-          const [communityData, exitData] = await Promise.all([communityRequest, exitRequest]);
+          // A single POI lookup is faster and avoids irrelevant entrance results.
+          // Requested child POIs are already included with children=1.
+          const communityData = await fetchPoi(community.keyword, "1");
+          const exitData = { pois: [] };
           const pois = communityData.pois || [];
           // Prefer exact and partial name matches; don't silently pick a random
           // residential complex when the user searches a different POI.
