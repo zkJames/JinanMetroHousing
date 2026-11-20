@@ -9,6 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <link rel="manifest" href="./manifest.webmanifest"/>
   <link rel="icon" href="./icons/metro.svg" type="image/svg+xml"/>
+  <script>if (location.pathname.startsWith("/metro/")) document.documentElement.classList.add("seasons-hosted");</script>
   <script>
     // Use an isolated PWA scope when the map is mounted below Our Seasons /metro/.
     if (location.pathname.startsWith("/metro/")) {
@@ -126,6 +127,7 @@
   <header class="app-topbar" aria-label="平板快捷操作">
     <div class="app-brand">济南地铁房<small>MatePad · 地图工具</small></div>
     <nav class="topbar-actions" aria-label="常用功能">
+      <a class="topbar-button seasons-back" href="/" aria-label="返回 Our Seasons 首页">← Our Seasons</a>
       <button class="topbar-button" type="button" data-drawer="favorites">☆ 收藏</button>
       <button class="topbar-button" type="button" data-drawer="recent">⌕ 最近</button>
       <button class="topbar-button" type="button" data-drawer="layers">◈ 图层</button>
