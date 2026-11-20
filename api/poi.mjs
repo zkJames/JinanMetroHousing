@@ -5,7 +5,9 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ message: '只支持 GET' });
   const key = process.env.AMAP_WEB_SERVICE_KEY;
   if (!key) return res.status(503).json({ message: '尚未配置高德 Web 服务 Key' });
-  const keyword = String(req.query.keyword || '').trim();
+  // Accept both the app's keyword and AMap's original keywords parameter.
+  const rawKeyword = req.query.keyword ?? req.query.keywords ?? '';
+  const keyword = typeof rawKeyword === 'string' ? rawKeyword.trim() : '';
   const children = String(req.query.children || '0');
   if (keyword.length < 1 || keyword.length > 80 || !['0', '1'].includes(children)) {
     return res.status(400).json({ message: '搜索条件无效' });
@@ -22,10 +24,13 @@ export default async function handler(req, res) {
     if (!response.ok) throw new Error('高德接口 HTTP ' + response.status);
     const data = await response.json();
     if (data.status !== '1') {
-      return res.status(502).json({ message: '高德搜索失败：' + (data.info || '未知错误') });
+      return res.status(502).json({
+        message: '高德搜索失败：' + (data.info || '未知错误'),
+        code: String(data.infocode || 'AMAP_ERROR')
+      });
     }
     // Return only the response required for place search, rather than proxy arbitrary remote URLs.
-    res.status(200).json({ status: data.status, pois: data.pois || [], count: data.count || '0' });
+    res.status(200).json({ status: data.status, pois: Array.isArray(data.pois) ? data.pois : [], count: data.count || '0' });
   } catch (error) {
     res.status(error.name === 'TimeoutError' ? 504 : 502).json({ message: '高德搜索暂不可用，请重试' });
   }
