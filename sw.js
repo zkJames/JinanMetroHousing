@@ -1,11 +1,12 @@
 /* Lightweight app-shell caching. Do not cache AMap tiles, geocoding, personal API data or secrets. */
-const CACHE = 'jinan-metro-pwa-v2';
+const CACHE = 'jinan-metro-pwa-v3';
+const PREFIX = new URL(self.registration.scope).pathname.replace(/\/$/, '');
 const ASSETS = [
   '/', '/index.html', '/jinan-map.html',
   '/css/tablet.css', '/js/storage.js', '/js/tablet-ui.js', '/js/tablet-measure.js',
   '/amap-metro-poi-data.js', '/metro-lines-data.js', '/metro-line7-data.js',
-  '/manifest.webmanifest', '/icons/metro.svg'
-];
+  '/manifest.webmanifest', '/manifest-metro.webmanifest', '/icons/metro.svg'
+].map(path => PREFIX + path);
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(async cache => {
     await Promise.all(ASSETS.map(async asset => {
@@ -27,7 +28,7 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   const url = new URL(req.url);
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_AMapService/') || url.pathname === '/config.local.js') return;
+  if (url.pathname.startsWith(PREFIX + '/api/') || url.pathname.startsWith(PREFIX + '/_AMapService/') || url.pathname === PREFIX + '/config.local.js') return;
   if (req.mode === 'navigate') {
     event.respondWith(fetch(req).then(async response => {
       if (!response.ok) throw new Error('Network');
@@ -36,7 +37,7 @@ self.addEventListener('fetch', event => {
         await cache.put(req, response.clone());
       }
       return response;
-    }).catch(async () => (await caches.match(req)) || (await caches.match('/jinan-map.html'))));
+    }).catch(async () => (await caches.match(req)) || (await caches.match(PREFIX + '/jinan-map.html'))));
     return;
   }
   if (!ASSETS.includes(url.pathname)) return;
